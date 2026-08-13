@@ -68,7 +68,7 @@ public class AutoZone1_AI extends LinearOpMode {
             vision.update();
             drive.updatePoseEstimate();
             
-            Pose2d pose = drive.pose;
+            Pose2d pose = drive.localizer.getPose();
 
             switch (currentState) {
                 case SEARCHING_BALL:

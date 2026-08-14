@@ -41,13 +41,13 @@ public class AutoOp_FarCorner extends LinearOpMode {
 
         for (int i = 0; i < CYCLE_COUNT; i++) {
             builder = builder
-                    .afterTime(0.0, eater.runIntakeAction())
+                    .stopAndAdd(eater.startIntakeAction())
                     .setTangent(EAT_CORNER_TANGENT)
                     .strafeToLinearHeading(EAT_CORNER_POS, EAT_CORNER_HEADING)
 
                     .afterTime(EAT_CORNER_WAIT_TIME, eater.stopEaterAction())
 
-                    .afterTime(0.0, shooter.runShooterAction(FAR_SHOOT_VELOCITY))
+                    .afterTime(0.5, shooter.runShooterAction(FAR_SHOOT_VELOCITY))
                     .strafeToLinearHeading(FAR_SHOOT_POS, FAR_SHOOT_HEADING)
                     .stopAndAdd(shootTwice());
         }
@@ -68,6 +68,7 @@ public class AutoOp_FarCorner extends LinearOpMode {
 
         Actions.runBlocking(
             new ParallelAction(
+                updater,
                 autoSequence,
                 updater
             )

@@ -18,6 +18,7 @@ public class SubsystemUpdater implements Action {
 
     public SubsystemUpdater(Part... parts) {
         this.parts = parts;
+        this.keepRunning = true;
     }
 
     @Override

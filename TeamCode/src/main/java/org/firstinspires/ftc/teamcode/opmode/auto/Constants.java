@@ -38,7 +38,7 @@ public class Constants {
 
     // 시작 지점
     public static Pose2d FAR_START_POSE = new Pose2d(new Vector2d(60, -10), Math.toRadians(180));
-    public static Pose2d CLOSE_START_POSE = new Pose2d(new Vector2d(0, 0), Math.toRadians(0)); //TODO
+    public static Pose2d CLOSE_START_POSE = new Pose2d(new Vector2d(-60, -10), Math.toRadians(0));
 
 
     // 발사 지점
@@ -63,6 +63,22 @@ public class Constants {
     public static double EAT_GATE_HEADING = Math.toRadians(-145);
     public static Pose2d EAT_GATE_POSE = new Pose2d(EAT_GATE_POS, EAT_GATE_HEADING);
     public static double EAT_GATE_TANGENT = Math.toRadians(-90);
+
+    // --- 벽 훑기(Sweep) : 벽에 비스듬히 부딪힌 뒤 게이트/골대 쪽(-x)으로 이동하며 훑는다 ---
+    // TODO:실제 경기장에서 체크하기
+    // 벽에 처음 비스듬히 닿는 지점 (코너 쪽, x가 큰 곳)
+    public static Vector2d SWEEP_ENTRY_POS = new Vector2d(58, -62);
+    // 발사 지점 -> 벽 으로 비스듬히 들어가는 방향
+    public static double SWEEP_ENTRY_TANGENT = Math.toRadians(-80);
+    // 훑는 동안 계속 유지할 자세. 진행 방향(-x = 180도) 에서 벽(-y) 쪽으로 20도 기울여 공을 인테이크로 몰아준다.
+    // 값이 FAR_SHOOT_HEADING 과 같아서 사이클 내내 회전이 거의 없다. (기울기를 키우려면 -180 쪽으로)
+    public static double SWEEP_HEADING = Math.toRadians(-160);
+    // 훑기가 끝나는 지점(게이트 쪽). y를 더 내리면(-) 벽을 더 세게 누르며 훑는다.
+    public static Vector2d SWEEP_END_POS = new Vector2d(20, -62);
+    public static double SWEEP_TANGENT = Math.toRadians(180);   // 벽을 따라 게이트 쪽(-x)
+    // 훑기가 끝난 뒤 마지막 공이 다 들어갈 때까지 인테이크를 더 돌리는 시간(초)
+    public static double SWEEP_TAIL_TIME = 0.5;
+
 
     // 이팅 대기시간
     public static double EAT_CORNER_WAIT_TIME = 2.0;

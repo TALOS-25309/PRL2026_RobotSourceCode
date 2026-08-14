@@ -1,15 +1,21 @@
 package org.firstinspires.ftc.teamcode.part.shooter;
 
+import androidx.annotation.NonNull;
+
+import com.acmerobotics.dashboard.telemetry.TelemetryPacket;
 import com.acmerobotics.roadrunner.Action;
 import com.acmerobotics.roadrunner.InstantAction;
 import com.qualcomm.robotcore.hardware.DcMotor;
 import com.qualcomm.robotcore.hardware.DcMotorEx;
 import com.qualcomm.robotcore.hardware.DcMotorSimple;
 import com.qualcomm.robotcore.hardware.HardwareMap;
+import com.qualcomm.robotcore.util.ElapsedTime;
 
 import org.firstinspires.ftc.robotcore.external.Telemetry;
 import org.firstinspires.ftc.teamcode.part.Constants;
 import org.firstinspires.ftc.teamcode.part.Part;
+import static org.firstinspires.ftc.teamcode.part.Constants.*;
+
 
 public class Shooter implements Part {
 
@@ -92,6 +98,10 @@ public class Shooter implements Part {
         motorState = MotorState.STOP;
     }
 
+    public double getVelocity() {
+        return shooter1.getVelocity();
+    }
+
     public void manualShooter(double power) {
         motorState = MotorState.MANUAL;
         this.manualPower = power;
@@ -105,4 +115,25 @@ public class Shooter implements Part {
     public Action stopShooterAction() {
         return new InstantAction(() -> stopShooter());
     }
+
+    public Action waitUntilTargetVelocityAction(double targetVelocity, double maxTime) {
+        return new Action() {
+            ElapsedTime timer = new ElapsedTime();
+            boolean init=true;
+            double curVelocity;
+
+            @Override
+            public boolean run(@NonNull TelemetryPacket telemetryPacket) {
+                if(init){
+                    runShooter(targetVelocity);
+                    timer.reset();
+                    init = false;
+                }
+                if(timer.seconds() > maxTime) return false;
+                curVelocity = getVelocity();
+                return Math.abs(curVelocity - targetVelocity) > VEL_TOLERANCE;
+            }
+        };
+    }
+
 }

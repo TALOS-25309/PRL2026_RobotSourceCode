@@ -190,6 +190,8 @@ public class Eater implements Part {
         return isBallDetected;
     }
 
+    public boolean isFull() {return false;}
+
     // --- 자율주행(RoadRunner 1.0)용 Action 반환 메서드 ---
     public Action runIntakeAction() {
         return new InstantAction(() -> runIntake());

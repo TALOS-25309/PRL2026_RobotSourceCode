@@ -74,7 +74,7 @@ public final class MecanumDrive {
 
         // path profile parameters (in inches)
         public double maxWheelVel = 50;
-        public double minProfileAccel = -30;
+        public double minProfileAccel = -10;
         public double maxProfileAccel = 50;
 
         // turn profile parameters (in radians)
@@ -237,8 +237,6 @@ public final class MecanumDrive {
 
         // TODO: reverse motor directions if needed
         // 일반적으로 메카넘 드라이브는 장착 방향 때문에 왼쪽 모터 두 개를 반전시킵니다.
-        leftBack.setDirection(DcMotorSimple.Direction.REVERSE);
-        rightBack.setDirection(DcMotorSimple.Direction.REVERSE);
         // 오른쪽 모터들은 기본 방향(FORWARD)으로 둡니다.
 
         // TODO: make sure your config has an IMU with this name (can be BNO or BHI)

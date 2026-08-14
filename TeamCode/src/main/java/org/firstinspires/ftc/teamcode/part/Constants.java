@@ -20,6 +20,8 @@ public class Constants {
     // 1150 RPM 모터의 경우 최대 속도가 약 2700 Ticks/sec 정도입니다.
     public static double FAR_SHOOT_VELOCITY = 2400.0;     // 멀리 쏠 때 (파슛) 속도
     public static double CLOSE_SHOOT_VELOCITY = 2100.0;   // 가까이서 쏠 때 (골밑슛) 속도
+
+    public static double VEL_TOLERANCE = 50;
     
     // 스마트 매크로(원버튼 발사) 시간 세팅
     public static double SHOOTER_SPOOL_TIME_MS = 3000;     // 발사 전 플라이휠이 목표 속도에 도달할 때까지 기다리는 예열 시간

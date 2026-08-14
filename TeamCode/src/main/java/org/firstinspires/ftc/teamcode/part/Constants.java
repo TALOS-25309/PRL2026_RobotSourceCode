@@ -35,4 +35,12 @@ public class Constants {
     
     // 발사 버튼을 누를 때 트랜스퍼 모터를 몇 ms 동안 돌려서 공을 밀어넣을 것인지 설정
     public static double EATER_FEED_TIME_MS = 350;
+
+    // --- Auto (AI) Constants ---
+    public static double AUTO_SPIN_SPEED = 0.3;           // 제자리 스캔 회전 속도 (공 탐색 & 골대 탐색 공통)
+    public static double AUTO_DRIVE_KP = 0.05;             // 지정 위치(명당/웨이포인트)로 이동 시 속도 계수 (P-Gain)
+    public static double AUTO_FORWARD_SPEED = 0.3;         // 공을 쫓아갈 때 전진 속도
+    public static double AUTO_PURSUIT_TIMEOUT_MS = 5000;   // 공 추적(사각지대 포함) 시 획득 실패로 간주하는 시간 (ms)
+    public static double AUTO_ABORT_REVERSE_TIME_MS = 500; // 획득 실패 시 뒤로 후진하는 시간 (ms)
+
 }

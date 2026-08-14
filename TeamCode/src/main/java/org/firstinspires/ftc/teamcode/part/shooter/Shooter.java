@@ -16,12 +16,10 @@ import org.firstinspires.ftc.teamcode.part.Constants;
 import org.firstinspires.ftc.teamcode.part.Part;
 import static org.firstinspires.ftc.teamcode.part.Constants.*;
 
-
 public class Shooter implements Part {
 
     private DcMotorEx shooter1;
     private DcMotorEx shooter2;
-    
     private Telemetry telemetry;
 
     public enum MotorState {
@@ -36,18 +34,13 @@ public class Shooter implements Part {
     public void init(HardwareMap hardwareMap, Telemetry telemetry) {
         this.telemetry = telemetry;
         
-        // 1. 슈터 모터 매핑 (1150 RPM 2개)
         shooter1 = hardwareMap.get(DcMotorEx.class, "shooter1");
         shooter2 = hardwareMap.get(DcMotorEx.class, "shooter2");
 
-        // 속도 제어 모드로 변경: 배터리 전압 변화에 무관하게 일정 속도 유지
         shooter1.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
         shooter2.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
         
-        // 슈터 모터는 서로 반대로 마주보고 돕니다 (조립에 따라 방향 반전 필요)
         shooter1.setDirection(DcMotorSimple.Direction.REVERSE);
-        
-        // 스토퍼 서보는 하드웨어에서 완전히 제거되었습니다.
     }
 
     @Override
@@ -57,15 +50,12 @@ public class Shooter implements Part {
 
     @Override
     public void update() {
-        // --- 모터 속도 인가 ---
         switch (motorState) {
             case RUN:
-                // 외부에서 지정된 목표 Ticks/sec 강제 유지 (배터리 전압 무시)
                 shooter1.setVelocity(currentTargetVelocity);
                 shooter2.setVelocity(currentTargetVelocity);
                 break;
             case MANUAL:
-                // 수동 모드는 파워 제어로 남겨둠 (테스트용)
                 shooter1.setPower(manualPower);
                 shooter2.setPower(manualPower);
                 break;
@@ -76,7 +66,6 @@ public class Shooter implements Part {
                 break;
         }
 
-        // --- 텔레메트리 출력 (디버깅용) ---
         telemetry.addData("Shooter State", motorState);
         telemetry.addData("Target Vel", motorState == MotorState.RUN ? currentTargetVelocity : 0);
         telemetry.addData("Actual Vel 1", shooter1.getVelocity());
@@ -88,7 +77,6 @@ public class Shooter implements Part {
         stopShooter();
     }
 
-    // --- 외부 제어용 메서드 ---
     public void runShooter(double targetVelocity) {
         motorState = MotorState.RUN;
         currentTargetVelocity = targetVelocity;
@@ -107,7 +95,6 @@ public class Shooter implements Part {
         this.manualPower = power;
     }
     
-    // --- 자율주행(RoadRunner 1.0)용 Action 반환 메서드 ---
     public Action runShooterAction(double targetVelocity) {
         return new InstantAction(() -> runShooter(targetVelocity));
     }
@@ -135,5 +122,4 @@ public class Shooter implements Part {
             }
         };
     }
-
 }

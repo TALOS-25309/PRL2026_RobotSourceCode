@@ -13,27 +13,21 @@ import org.firstinspires.ftc.teamcode.part.eater.Eater;
 import org.firstinspires.ftc.teamcode.part.shooter.Shooter;
 import org.firstinspires.ftc.teamcode.roadrunner.MecanumDrive;
 
-@Autonomous(name = "Zone 1 AI (Hunt & Shoot)", group = "Auto")
+@Autonomous(name = "Zone 1 (AI)", group = "Auto")
 public class AutoZone1_AI extends LinearOpMode {
 
-    private enum AIState {
-        SEARCHING_BALL,
-        PURSUING_BALL,
+    public enum AutoState {
+        SWEEPING,
+        TRACKING_BALL,
+        BLIND_PURSUIT,
         AIMING_GOAL,
-        SHOOTING_MACRO
-    }
-
-    private enum ShootState {
-        SPOOLING,
-        FEED_1,
-        DELAY,
-        FEED_2
+        SHOOTING
     }
 
     @Override
     public void runOpMode() {
-        // 시작 위치 (0,0) 방향 0도 세팅
-        MecanumDrive drive = new MecanumDrive(hardwareMap, new Pose2d(0, 0, 0));
+        Pose2d initialPose = new Pose2d(0, 0, 0);
+        MecanumDrive drive = new MecanumDrive(hardwareMap, initialPose);
         Eater eater = new Eater();
         Shooter shooter = new Shooter();
         Vision vision = new Vision();
@@ -42,148 +36,164 @@ public class AutoZone1_AI extends LinearOpMode {
         shooter.init(hardwareMap, telemetry);
         vision.init(hardwareMap, telemetry);
 
-        telemetry.addLine("🚀 AI Auto Ready!");
-        telemetry.addLine("Pipeline 0: Goal | Pipeline 1: Ball");
+        Vector2d[] sweepWaypoints = {
+            new Vector2d(20, 0),
+            new Vector2d(20, 20),
+            new Vector2d(40, 20),
+            new Vector2d(40, 40),
+            new Vector2d(60, 40),
+            new Vector2d(60, 60),
+            new Vector2d(30, 60),
+            new Vector2d(0, 60),
+            new Vector2d(0, 30)
+        };
+        int waypointIndex = 0;
+
+        AutoState state = AutoState.SWEEPING;
+        double blindPursuitHeading = 0.0;
+        
+        ElapsedTime macroTimer = new ElapsedTime();
+        int shootStep = 0;
+
+        telemetry.addLine("Ready");
         telemetry.update();
 
         waitForStart();
-
         if (isStopRequested()) return;
 
         eater.start();
         shooter.start();
         vision.start();
+        
+        vision.setPipeline(1);
+        eater.runIntake(); 
 
-        AIState currentState = AIState.SEARCHING_BALL;
-        ShootState shootState = ShootState.SPOOLING;
-        ElapsedTime stateTimer = new ElapsedTime();
-        ElapsedTime matchTimer = new ElapsedTime();
-
-        // 1분 30초(최대 85초) 동안 무한 AI 루프 가동
-        while (opModeIsActive() && matchTimer.seconds() < 85) {
-            
-            // 모든 부품 및 현재 로봇 위치(오도메트리) 최신화
+        while (opModeIsActive() && !isStopRequested()) {
+            drive.updatePoseEstimate();
             eater.update();
             shooter.update();
             vision.update();
-            drive.updatePoseEstimate();
-            
-            Pose2d pose = drive.localizer.getPose();
 
-            switch (currentState) {
-                case SEARCHING_BALL:
-                    vision.setPipeline(1); // 공 찾기 모드
-                    eater.runIntake(); // 공 먹기 시작
+            double currentX = drive.pose.position.x;
+            double currentY = drive.pose.position.y;
+            double currentH = drive.pose.heading.toDouble();
 
-                    // 구역 경계(70x70) 이탈 방지 (여유를 두어 60인치 선에서 돌아옴)
-                    if (pose.position.x > 60 || pose.position.x < -10 || pose.position.y > 60 || pose.position.y < -60) {
-                        // 경계를 벗어나려 하면 뒤로 후진하며 꺾음
-                        drive.setDrivePowers(new PoseVelocity2d(new Vector2d(-0.4, 0), 0.5));
-                    } else {
-                        // 천천히 전진하며 주변을 훑음 (크게 원을 그리며 탐색)
-                        drive.setDrivePowers(new PoseVelocity2d(new Vector2d(0.2, 0), 0.4));
-                    }
-
-                    // 공이 시야에 들어왔다!
+            switch (state) {
+                case SWEEPING:
                     if (vision.hasTarget()) {
-                        currentState = AIState.PURSUING_BALL;
+                        state = AutoState.TRACKING_BALL;
+                        break;
                     }
-                    
-                    // 운 좋게 공을 하나 삼켰다면 즉시 발사 모드로
-                    if (eater.isBallDetected()) {
-                        currentState = AIState.AIMING_GOAL;
+
+                    Vector2d target = sweepWaypoints[waypointIndex];
+                    double errorX = target.x - currentX;
+                    double errorY = target.y - currentY;
+                    double distance = Math.hypot(errorX, errorY);
+
+                    if (distance < 5.0) { 
+                        waypointIndex = (waypointIndex + 1) % sweepWaypoints.length;
                     }
+
+                    double cos = Math.cos(-currentH);
+                    double sin = Math.sin(-currentH);
+                    double robotX = errorX * cos - errorY * sin;
+                    double robotY = errorX * sin + errorY * cos;
+
+                    double driveKp = 0.05;
+                    double forwardPower = robotX * driveKp;
+                    double strafePower = robotY * driveKp;
+                    double turnPower = Math.sin(-currentH) * 1.0;
+
+                    drive.setDrivePowers(new PoseVelocity2d(
+                            new Vector2d(forwardPower, strafePower), turnPower
+                    ));
                     break;
 
-                case PURSUING_BALL:
-                    vision.setPipeline(1);
-                    eater.runIntake();
-                    
-                    if (vision.hasTarget()) {
-                        // 공을 향해 조향하며 돌진
-                        double turn = -vision.getTx() * 0.02; 
-                        drive.setDrivePowers(new PoseVelocity2d(new Vector2d(0.5, 0), turn));
-                    } else {
-                        // 공을 놓침 -> 다시 탐색 모드로
-                        currentState = AIState.SEARCHING_BALL;
+                case TRACKING_BALL:
+                    if (!vision.hasTarget()) {
+                        blindPursuitHeading = currentH;
+                        state = AutoState.BLIND_PURSUIT;
+                        break;
                     }
 
-                    // 돌진하다가 공을 먹음
+                    double txBall = vision.getTx();
+                    double trackTurn = -txBall * Constants.VISION_TURN_KP;
+                    
+                    drive.setDrivePowers(new PoseVelocity2d(
+                            new Vector2d(0.4, 0), trackTurn
+                    ));
+                    break;
+
+                case BLIND_PURSUIT:
                     if (eater.isBallDetected()) {
                         drive.setDrivePowers(new PoseVelocity2d(new Vector2d(0, 0), 0));
-                        currentState = AIState.AIMING_GOAL;
+                        eater.stopEater();
+                        vision.setPipeline(0);
+                        state = AutoState.AIMING_GOAL;
+                        break;
                     }
+
+                    if (currentX > 70 || currentY > 70 || currentX < 0 || currentY < 0) {
+                        drive.setDrivePowers(new PoseVelocity2d(new Vector2d(0, 0), 0));
+                        state = AutoState.SWEEPING;
+                        break;
+                    }
+
+                    double blindTurn = (blindPursuitHeading - currentH) * 0.5;
+                    drive.setDrivePowers(new PoseVelocity2d(
+                            new Vector2d(0.4, 0), blindTurn
+                    ));
                     break;
 
                 case AIMING_GOAL:
-                    vision.setPipeline(0); // 골대 파이프라인으로 긴급 전환!
-                    eater.stopEater(); // 먹은 공이 튀어나가지 않게 정지
-                    
                     if (vision.hasTarget()) {
-                        double turn = -vision.getTx() * Constants.VISION_TURN_KP;
-                        drive.setDrivePowers(new PoseVelocity2d(new Vector2d(0, 0), turn));
-                        
-                        // 정조준 완료
-                        if (Math.abs(vision.getTx()) < 1.5) {
+                        double txGoal = vision.getTx();
+                        if (Math.abs(txGoal) < 1.5) {
                             drive.setDrivePowers(new PoseVelocity2d(new Vector2d(0, 0), 0));
-                            currentState = AIState.SHOOTING_MACRO;
-                            shootState = ShootState.SPOOLING;
                             shooter.runShooter(Constants.FAR_SHOOT_VELOCITY);
-                            stateTimer.reset();
+                            macroTimer.reset();
+                            shootStep = 1;
+                            state = AutoState.SHOOTING;
+                        } else {
+                            drive.setDrivePowers(new PoseVelocity2d(
+                                    new Vector2d(0, 0), -txGoal * Constants.VISION_TURN_KP
+                            ));
                         }
                     } else {
-                        // 골대가 안 보이면 제자리 회전하며 골대 찾기
-                        drive.setDrivePowers(new PoseVelocity2d(new Vector2d(0, 0), 0.3));
+                        drive.setDrivePowers(new PoseVelocity2d(
+                                new Vector2d(0, 0), Math.sin(-currentH) * 1.0
+                        ));
                     }
                     break;
 
-                case SHOOTING_MACRO:
-                    drive.setDrivePowers(new PoseVelocity2d(new Vector2d(0, 0), 0)); // 정지 상태 유지
-                    
-                    switch (shootState) {
-                        case SPOOLING:
-                            if (stateTimer.milliseconds() > Constants.SHOOTER_SPOOL_TIME_MS) {
-                                eater.feedToShooter();
-                                stateTimer.reset();
-                                shootState = ShootState.FEED_1;
-                            }
-                            break;
-                        case FEED_1:
-                            if (stateTimer.milliseconds() > Constants.EATER_FEED_TIME_MS) {
-                                eater.stopEater();
-                                stateTimer.reset();
-                                shootState = ShootState.DELAY;
-                            }
-                            break;
-                        case DELAY:
-                            if (stateTimer.milliseconds() > Constants.RAPID_FIRE_DELAY_FAR_MS) {
-                                eater.feedToShooter();
-                                stateTimer.reset();
-                                shootState = ShootState.FEED_2;
-                            }
-                            break;
-                        case FEED_2:
-                            if (stateTimer.milliseconds() > Constants.EATER_FEED_TIME_MS) {
-                                shooter.stopShooter();
-                                eater.stopEater();
-                                // 발사 끝! 다시 공 주우러 출발
-                                currentState = AIState.SEARCHING_BALL; 
-                            }
-                            break;
+                case SHOOTING:
+                    if (shootStep == 1 && macroTimer.milliseconds() > Constants.SHOOTER_SPOOL_TIME_MS) {
+                        eater.feedToShooter();
+                        macroTimer.reset();
+                        shootStep = 2;
+                    } else if (shootStep == 2 && macroTimer.milliseconds() > Constants.EATER_FEED_TIME_MS) {
+                        eater.stopEater(); 
+                        macroTimer.reset();
+                        shootStep = 3;
+                    } else if (shootStep == 3 && macroTimer.milliseconds() > Constants.RAPID_FIRE_DELAY_FAR_MS) {
+                        eater.feedToShooter();
+                        macroTimer.reset();
+                        shootStep = 4;
+                    } else if (shootStep == 4 && macroTimer.milliseconds() > Constants.EATER_FEED_TIME_MS) {
+                        shooter.stopShooter();
+                        eater.stopEater();
+                        
+                        vision.setPipeline(1);
+                        eater.runIntake();     
+                        state = AutoState.SWEEPING;
                     }
                     break;
             }
 
-            telemetry.addData("AI State", currentState);
-            telemetry.addData("Shoot State", shootState);
-            telemetry.addData("X", pose.position.x);
-            telemetry.addData("Y", pose.position.y);
-            telemetry.addData("Time Left", 85 - matchTimer.seconds());
+            telemetry.addData("State", state.toString());
             telemetry.update();
         }
-
-        // 경기 종료 5초 전 멈춤
-        drive.setDrivePowers(new PoseVelocity2d(new Vector2d(0, 0), 0));
+        
         eater.stop();
         shooter.stop();
         vision.stop();

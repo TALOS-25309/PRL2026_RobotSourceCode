@@ -102,6 +102,13 @@ public class Shooter implements Part {
         return shooter1.getVelocity();
     }
 
+    public double getCurrent() {
+        return Math.max(
+            shooter1.getCurrent(org.firstinspires.ftc.robotcore.external.navigation.CurrentUnit.AMPS),
+            shooter2.getCurrent(org.firstinspires.ftc.robotcore.external.navigation.CurrentUnit.AMPS)
+        );
+    }
+
     public void manualShooter(double power) {
         motorState = MotorState.MANUAL;
         this.manualPower = power;

@@ -13,8 +13,8 @@ import org.firstinspires.ftc.teamcode.part.eater.Eater;
 import org.firstinspires.ftc.teamcode.part.shooter.Shooter;
 import org.firstinspires.ftc.teamcode.roadrunner.MecanumDrive;
 
-@Autonomous(name = "Zone 1 (Auto)", group = "Auto")
-public class AutoZone1_AI extends LinearOpMode {
+@Autonomous(name = "Zone 2 (Auto)", group = "Auto")
+public class AutoZone2_AI extends LinearOpMode {
 
     public enum AutoState {
         MOVE_TO_SEARCH_START, // 시작 시 또는 사격 후 탐색 시작 명당 위치로 이동
@@ -43,8 +43,8 @@ public class AutoZone1_AI extends LinearOpMode {
         shooter.init(hardwareMap, telemetry);
         vision.init(hardwareMap, telemetry);
         
-        // Zone 1 전용 목표 골대 에이프릴 태그 ID 설정
-        vision.setTargetTagId(Constants.ZONE1_TARGET_TAG_ID);
+        // Zone 2 전용 목표 골대 에이프릴 태그 ID 설정
+        vision.setTargetTagId(Constants.ZONE2_TARGET_TAG_ID);
 
         Vector2d[] safeWaypoints = {
             new Vector2d(25, 25),
@@ -73,7 +73,7 @@ public class AutoZone1_AI extends LinearOpMode {
         double escapeFieldY = 0;
         boolean isFieldEscape = false;
 
-        telemetry.addLine("Auto Zone 1 Ready");
+        telemetry.addLine("Auto Zone 2 Ready");
         telemetry.update();
 
         waitForStart();
@@ -132,14 +132,14 @@ public class AutoZone1_AI extends LinearOpMode {
                         state = AutoState.TRACKING_BALL;
                         break;
                     }
-                    double startTargetX = Constants.ZONE1_SEARCH_START_X;
-                    double startTargetY = Constants.ZONE1_SEARCH_START_Y;
+                    double startTargetX = Constants.ZONE2_SEARCH_START_X;
+                    double startTargetY = Constants.ZONE2_SEARCH_START_Y;
                     
                     double startMoveErrorX = startTargetX - currentX;
                     double startMoveErrorY = startTargetY - currentY;
                     double startMoveDistance = Math.hypot(startMoveErrorX, startMoveErrorY);
                     
-                    double startTurnError = Math.toRadians(Constants.ZONE1_SEARCH_START_HEADING) - currentH;
+                    double startTurnError = Math.toRadians(Constants.ZONE2_SEARCH_START_HEADING) - currentH;
                     while (startTurnError > Math.PI) startTurnError -= 2 * Math.PI;
                     while (startTurnError < -Math.PI) startTurnError += 2 * Math.PI;
                     
@@ -240,11 +240,11 @@ public class AutoZone1_AI extends LinearOpMode {
                         break;
                     }
                     
-                    // Zone 1 물리적 한계: 뒤쪽(-X)과 왼쪽(+Y)은 벽. 앞쪽(+X)과 오른쪽(-Y)은 열린 공간.
-                    if (currentX > Constants.ZONE_LENGTH_X + Constants.AUTO_OPEN_EXTENSION_INCHES) { // 앞쪽 (열린 공간)
+                    // Zone 2 물리적 한계: 앞쪽(+X)과 왼쪽(+Y)은 벽. 뒤쪽(-X)과 오른쪽(-Y)은 열린 공간.
+                    if (currentX > Constants.ZONE_LENGTH_X + Constants.AUTO_WALL_EXTENSION_INCHES) { // 앞쪽 (벽)
                         escapeFieldX = -Constants.AUTO_FORWARD_SPEED; escapeFieldY = 0; isFieldEscape = true;
                         state = AutoState.ABORT_REVERSE; macroTimer.reset(); break;
-                    } else if (currentX < -Constants.AUTO_WALL_EXTENSION_INCHES) { // 뒤쪽 (벽)
+                    } else if (currentX < -Constants.AUTO_OPEN_EXTENSION_INCHES) { // 뒤쪽 (열린 공간)
                         escapeFieldX = Constants.AUTO_FORWARD_SPEED; escapeFieldY = 0; isFieldEscape = true;
                         state = AutoState.ABORT_REVERSE; macroTimer.reset(); break;
                     } else if (currentY > Constants.ZONE_WIDTH_Y + Constants.AUTO_WALL_EXTENSION_INCHES) { // 왼쪽 (벽)
@@ -286,10 +286,10 @@ public class AutoZone1_AI extends LinearOpMode {
                         break;
                     }
 
-                    if (currentX > Constants.ZONE_LENGTH_X + Constants.AUTO_OPEN_EXTENSION_INCHES) { 
+                    if (currentX > Constants.ZONE_LENGTH_X + Constants.AUTO_WALL_EXTENSION_INCHES) { 
                         escapeFieldX = -Constants.AUTO_FORWARD_SPEED; escapeFieldY = 0; isFieldEscape = true;
                         state = AutoState.ABORT_REVERSE; macroTimer.reset(); break;
-                    } else if (currentX < -Constants.AUTO_WALL_EXTENSION_INCHES) { 
+                    } else if (currentX < -Constants.AUTO_OPEN_EXTENSION_INCHES) { 
                         escapeFieldX = Constants.AUTO_FORWARD_SPEED; escapeFieldY = 0; isFieldEscape = true;
                         state = AutoState.ABORT_REVERSE; macroTimer.reset(); break;
                     } else if (currentY > Constants.ZONE_WIDTH_Y + Constants.AUTO_WALL_EXTENSION_INCHES) { 
@@ -329,8 +329,8 @@ public class AutoZone1_AI extends LinearOpMode {
 
                 case MOVE_TO_SHOOT:
                     // 1단계: 사격 위치로 먼저 이동 (이동 중에는 0도 정면 유지)
-                    double shootTargetX = Constants.ZONE1_SHOOT_POSE_X;
-                    double shootTargetY = Constants.ZONE1_SHOOT_POSE_Y;
+                    double shootTargetX = Constants.ZONE2_SHOOT_POSE_X;
+                    double shootTargetY = Constants.ZONE2_SHOOT_POSE_Y;
                     
                     double moveErrorX = shootTargetX - currentX;
                     double moveErrorY = shootTargetY - currentY;
@@ -376,7 +376,7 @@ public class AutoZone1_AI extends LinearOpMode {
                     
                 case TURN_TO_SHOOT:
                     // 2단계: 도착 후 지정된 기본 각도 방향으로 제자리 회전
-                    double shootTargetH = Math.toRadians(Constants.ZONE1_SHOOT_HEADING_DEG);
+                    double shootTargetH = Math.toRadians(Constants.ZONE2_SHOOT_HEADING_DEG);
                     double turnError = shootTargetH - currentH;
                     while (turnError > Math.PI) turnError -= 2 * Math.PI;
                     while (turnError < -Math.PI) turnError += 2 * Math.PI;
@@ -411,23 +411,23 @@ public class AutoZone1_AI extends LinearOpMode {
                 case AIMING_GOAL:
                     if (macroTimer.milliseconds() < 400) {
                         // 골대(Limelight 파이프라인 0) 모드로 전환되는 동안에는 센서를 믿지 않고 기본 사격 각도 고정
-                        double aimTurnError = Math.toRadians(Constants.ZONE1_SHOOT_HEADING_DEG) - currentH;
+                        double aimTurnError = Math.toRadians(Constants.ZONE2_SHOOT_HEADING_DEG) - currentH;
                         while (aimTurnError > Math.PI) aimTurnError -= 2 * Math.PI;
                         while (aimTurnError < -Math.PI) aimTurnError += 2 * Math.PI;
                         drive.setDrivePowers(new PoseVelocity2d(new Vector2d(0, 0), aimTurnError * 1.0));
                     }
                     else if (vision.hasTarget()) {
                         // 영점 조절: 오른쪽으로 빗나갈 경우 오프셋을 빼주면 로봇이 더 왼쪽을 조준하게 됨
-                        double txGoal = vision.getTx() - Constants.ZONE1_SHOOT_TX_OFFSET;
+                        double txGoal = vision.getTx() - Constants.ZONE2_SHOOT_TX_OFFSET;
                         // 오차가 작거나 너무 오래 걸리면(2초 초과) 일단 발사
                         if (Math.abs(txGoal) < 1.5 || macroTimer.milliseconds() > 2400) { 
                             drive.setDrivePowers(new PoseVelocity2d(new Vector2d(0, 0), 0));
-                            shooter.runShooter(Constants.FAR_SHOOT_VELOCITY);
+                            shooter.runShooter(Constants.CLOSE_SHOOT_VELOCITY);
                             macroTimer.reset();
                             shootStep = 1;
                             state = AutoState.SHOOTING;
                         } else {
-                            double aimTurn = -txGoal * Constants.ZONE1_3_VISION_TURN_KP;
+                            double aimTurn = -txGoal * Constants.ZONE2_4_VISION_TURN_KP;
                             
                             // 화면 가장자리에서 발견했을 때 파워가 폭주하여 급가속하는 현상 방지 (최대 0.3으로 제한)
                             if (aimTurn > 0.3) aimTurn = 0.3;
@@ -447,7 +447,7 @@ public class AutoZone1_AI extends LinearOpMode {
                         if (macroTimer.milliseconds() > 4000) {
                             // 4초 이상 태그를 못 찾으면 강제 발사
                             drive.setDrivePowers(new PoseVelocity2d(new Vector2d(0, 0), 0));
-                            shooter.runShooter(Constants.FAR_SHOOT_VELOCITY);
+                            shooter.runShooter(Constants.CLOSE_SHOOT_VELOCITY);
                             macroTimer.reset();
                             shootStep = 1;
                             state = AutoState.SHOOTING;
@@ -521,7 +521,7 @@ public class AutoZone1_AI extends LinearOpMode {
                     else if (shootStep == 2) {
                         if (eater.isBallDetected()) {
                             eater.forceStopEater(); // 인테이크 및 트랜스퍼 정지
-                            shooter.runShooter(Constants.FAR_SHOOT_VELOCITY); // 슈터 예열 재가동
+                            shooter.runShooter(Constants.CLOSE_SHOOT_VELOCITY); // 슈터 예열 재가동
                             macroTimer.reset();
                             shootStep = 1; // SHOOTING 상태의 1단계(예열)로 설정
                             state = AutoState.SHOOTING;

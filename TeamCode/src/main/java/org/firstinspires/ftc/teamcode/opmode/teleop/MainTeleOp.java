@@ -21,6 +21,7 @@ public class MainTeleOp extends LinearOpMode {
     private Vision vision;
 
     private boolean lastBallDetected = false;
+    private boolean lastFull = false;
 
     // --- 스마트 슈팅 매크로 상태 변수들 ---
     private enum ShootMacroState {
@@ -51,7 +52,7 @@ public class MainTeleOp extends LinearOpMode {
         telemetry.addLine("Main TeleOp Ready!");
         telemetry.addLine("=================================");
         telemetry.addLine("[Drive] Left Stick: Move | Right Stick X: Turn");
-        telemetry.addLine("[Eater] LT: Intake | LB: Spit");
+        telemetry.addLine("[Eater] LT: Intake | LB: Spit | B: Transfer Rev / Eater Fwd");
         telemetry.addLine("[Shoot - Far]   Y (Single) | RT (Rapid)");
         telemetry.addLine("[Shoot - Close] A (Single) | RB (Rapid)");
         telemetry.addLine("[Vision] Hold X to Auto-Aim");
@@ -87,6 +88,8 @@ public class MainTeleOp extends LinearOpMode {
                     eater.runIntake(); 
                 } else if (gamepad1.left_bumper) {
                     eater.runReverse();
+                } else if (gamepad1.b || gamepad2.b) {
+                    eater.runJamRecovery();
                 } else {
                     eater.stopEater();
                 }
@@ -94,9 +97,16 @@ public class MainTeleOp extends LinearOpMode {
 
             boolean currentBallDetected = eater.isBallDetected();
             if (currentBallDetected && !lastBallDetected) {
-                gamepad1.rumble(500); 
+                gamepad1.rumble(250); 
             }
             lastBallDetected = currentBallDetected;
+
+            boolean currentFull = eater.isFull();
+            if (currentFull && !lastFull) {
+                gamepad1.rumble(500); 
+                gamepad2.rumble(500);
+            }
+            lastFull = currentFull;
 
 
             // ---------------------------------

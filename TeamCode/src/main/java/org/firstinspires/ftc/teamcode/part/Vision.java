@@ -18,6 +18,10 @@ public class Vision implements Part {
     private double ty = 0.0; // 세로 오차 각도 (도)
     private double ta = 0.0; // 타겟 면적 (%)
     
+    // 특정 에이프릴 태그만 추적하기 위한 ID (-1이면 전체 추적)
+    private int targetTagId = -1;
+    private int currentPipeline = 0; // 현재 활성화된 파이프라인 번호
+    
     @Override
     public void init(HardwareMap hardwareMap, Telemetry telemetry) {
         this.telemetry = telemetry;
@@ -48,12 +52,37 @@ public class Vision implements Part {
         LLResult result = limelight.getLatestResult();
         
         if (result != null && result.isValid()) {
-            hasTarget = true;
-            tx = result.getTx();
-            ty = result.getTy();
-            ta = result.getTa();
+            // 0번 파이프라인(골대 에이프릴 태그)일 때만 태그 ID 필터링 적용
+            if (currentPipeline == 0 && targetTagId != -1) {
+                boolean found = false;
+                for (com.qualcomm.hardware.limelightvision.LLResultTypes.FiducialResult fr : result.getFiducialResults()) {
+                    if (fr.getFiducialId() == targetTagId) {
+                        hasTarget = true;
+                        tx = fr.getTargetXDegrees();
+                        ty = fr.getTargetYDegrees();
+                        ta = fr.getTargetArea();
+                        found = true;
+                        break;
+                    }
+                }
+                
+                if (!found) {
+                    hasTarget = false;
+                    tx = 0.0;
+                    ty = 0.0;
+                    ta = 0.0;
+                    telemetry.addData("Vision Target", "Target Tag " + targetTagId + " Not Found");
+                    return;
+                }
+            } else {
+                // 1번 파이프라인(공 감지)이거나 필터가 없을 때는 기본 감지 데이터(공 위치) 사용
+                hasTarget = true;
+                tx = result.getTx();
+                ty = result.getTy();
+                ta = result.getTa();
+            }
             
-            telemetry.addData("Vision Target", "🎯 감지됨!");
+            telemetry.addData("Vision Target", currentPipeline == 0 ? "🎯 골대 감지됨! (ID: " + targetTagId + ")" : "🟢 공 감지됨!");
             telemetry.addData("tx (가로 오차)", "%.2f 도", tx);
             telemetry.addData("ty (세로 오차)", "%.2f 도", ty);
         } else {
@@ -82,9 +111,15 @@ public class Vision implements Part {
     public double getTy() {
         return ty;
     }
+    
+    // 목표 에이프릴 태그 ID 설정 (-1은 ID 무시)
+    public void setTargetTagId(int id) {
+        this.targetTagId = id;
+    }
 
     // 파이프라인 스위칭 (0: Goal, 1: Ball)
     public void setPipeline(int id) {
+        this.currentPipeline = id;
         limelight.pipelineSwitch(id);
     }
 }

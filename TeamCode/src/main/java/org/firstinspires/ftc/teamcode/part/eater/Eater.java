@@ -28,7 +28,7 @@ public class Eater implements Part {
     private Telemetry telemetry;
 
     public enum State {
-        STOP, INTAKE, REVERSE, MANUAL, FEEDING, INTAKE_ONLY, TRANSFER_ONLY
+        STOP, INTAKE, REVERSE, MANUAL, FEEDING, INTAKE_ONLY, TRANSFER_ONLY, JAM_RECOVERY
     }
 
     private State currentState = State.STOP;
@@ -48,8 +48,8 @@ public class Eater implements Part {
         sweeperRight = hardwareMap.get(CRServo.class, "sweeperRight");
         sweeperRight.setDirection(DcMotorSimple.Direction.REVERSE);
 
-        colorSensorSecond = hardwareMap.get(DistanceSensor.class, "colorSensor");
-        colorSensorFirst = hardwareMap.get(DistanceSensor.class, "colorSensor2");
+        colorSensorFirst = hardwareMap.get(DistanceSensor.class, "colorSensor");
+        colorSensorSecond = hardwareMap.get(DistanceSensor.class, "colorSensor2");
 
         eaterMotor.setMode(DcMotor.RunMode.RUN_WITHOUT_ENCODER);
         transferMotor.setMode(DcMotor.RunMode.RUN_WITHOUT_ENCODER);
@@ -73,18 +73,36 @@ public class Eater implements Part {
         double distanceCmSecond = colorSensorSecond.getDistance(DistanceUnit.CM);
         double distanceCmFirst = colorSensorFirst.getDistance(DistanceUnit.CM);
 
-        if (Math.max(distanceCmFirst, distanceCmSecond) > Constants.EATER_BALL_DISTANCE_CM + 2.0) {
+        boolean firstHasBall = distanceCmFirst < Constants.EATER_BALL_DISTANCE_CM;
+        boolean secondHasBall = distanceCmSecond < Constants.EATER_BALL_DISTANCE_CM;
+
+        boolean firstIsEmpty = distanceCmFirst > Constants.EATER_BALL_DISTANCE_CM + 1.5;
+        boolean secondIsEmpty = distanceCmSecond > Constants.EATER_BALL_DISTANCE_CM + 1.5;
+
+        // 첫 번째(위쪽) 센서와 두 번째(아래쪽) 센서 모두 공이 있는 경우 (꽉 참)
+        if (firstHasBall && secondHasBall) {
+            isFull = true;
+            isBallDetected = true;
+            if (currentState == State.INTAKE || currentState == State.INTAKE_ONLY) {
+                currentState = State.STOP; // 두 개 다 먹었으므로 모터 강제 정지
+            }
+        } 
+        // 첫 번째(위쪽) 센서에 공이 도착한 경우 (1개 장전 완료)
+        else if (firstHasBall) {
+            isBallDetected = true;
+            isFull = false;
+            if (currentState == State.INTAKE) {
+                currentState = State.INTAKE_ONLY; // 트랜스퍼 멈추고 인테이크만 돌림 (두 번째 공 받기)
+            }
+        } 
+        // 첫 번째 센서가 비어있다면, 두 번째 센서가 감지되더라도 무시 (지나가는 중이거나 오작동)
+        else {
             isBallDetected = false;
             isFull = false;
-        }
-
-        if (currentState == State.INTAKE && Math.min(distanceCmFirst, distanceCmSecond) < Constants.EATER_BALL_DISTANCE_CM){
-            currentState = State.INTAKE_ONLY;
-            isBallDetected = true; 
-        }
-
-        if (currentState == State.INTAKE_ONLY && Math.max(distanceCmFirst, distanceCmSecond) < Constants.EATER_BALL_DISTANCE_CM){
-            isFull = true;
+            // 텅 비었는데 트랜스퍼가 멈춰있는 INTAKE_ONLY 상태라면, 다음 공을 끌어올릴 수 있도록 INTAKE로 자동 복구
+            if (currentState == State.INTAKE_ONLY) {
+                currentState = State.INTAKE;
+            }
         }
 
 
@@ -110,6 +128,10 @@ public class Eater implements Part {
             case REVERSE:
                 intakePower = Constants.EATER_REVERSE_POWER;
                 transferPower = Constants.EATER_REVERSE_POWER;
+                break;
+            case JAM_RECOVERY:
+                intakePower = Constants.EATER_POWER; // 인테이크는 정회전(먹기)
+                transferPower = Constants.EATER_REVERSE_POWER; // 트랜스퍼는 역회전(뱉기)
                 break;
             case MANUAL:
                 intakePower = manualPower;
@@ -143,7 +165,9 @@ public class Eater implements Part {
             return; 
         }
         
-        if (isBallDetected) {
+        if (isFull) {
+            currentState = State.STOP; // 꽉 찼으면 모터 정지 유지
+        } else if (isBallDetected) {
             currentState = State.INTAKE_ONLY;
         } else if (currentState != State.INTAKE) {
             currentState = State.INTAKE;
@@ -152,6 +176,10 @@ public class Eater implements Part {
 
     public void runReverse() {
         currentState = State.REVERSE;
+    }
+
+    public void runJamRecovery() {
+        currentState = State.JAM_RECOVERY;
     }
 
     public void stopEater() {

@@ -17,6 +17,7 @@ import org.firstinspires.ftc.teamcode.roadrunner.MecanumDrive;
 public class AutoZone1_AI extends LinearOpMode {
 
     public enum AutoState {
+        INITIAL_FORWARD, // 시작 시 벽에서 떨어지기 위해 전진
         SEARCH_SPIN,    
         SEARCH_MOVE,    
         TRACKING_BALL,  
@@ -51,7 +52,7 @@ public class AutoZone1_AI extends LinearOpMode {
         };
         int waypointIndex = 0;
 
-        AutoState state = AutoState.SEARCH_SPIN;
+        AutoState state = AutoState.INITIAL_FORWARD;
         double searchStartH = 0.0;
         double blindPursuitHeading = 0.0;
         
@@ -88,6 +89,22 @@ public class AutoZone1_AI extends LinearOpMode {
             double currentH = drive.localizer.getPose().heading.toDouble();
 
             switch (state) {
+                case INITIAL_FORWARD:
+                    // 시작 지점(벽면)에서 회전하면 로봇이 벽에 쓸리므로 15인치 앞으로 나온 뒤 스캔 시작
+                    if (vision.hasTarget()) {
+                        abortTimer.reset();
+                        state = AutoState.TRACKING_BALL;
+                        break;
+                    }
+                    
+                    if (currentX < 15.0) {
+                        drive.setDrivePowers(new PoseVelocity2d(new Vector2d(Constants.AUTO_FORWARD_SPEED, 0), 0));
+                    } else {
+                        searchStartH = currentH;
+                        state = AutoState.SEARCH_SPIN;
+                    }
+                    break;
+
                 case SEARCH_SPIN:
                     if (vision.hasTarget()) {
                         abortTimer.reset(); 
@@ -160,6 +177,9 @@ public class AutoZone1_AI extends LinearOpMode {
 
                     double txBall = vision.getTx();
                     double trackTurn = -txBall * Constants.VISION_TURN_KP;
+                    // 공을 쫓아갈 때 회전(조향)이 너무 급격하지 않도록 최대 속도를 0.2로 제한
+                    if (trackTurn > 0.2) trackTurn = 0.2;
+                    if (trackTurn < -0.2) trackTurn = -0.2;
                     
                     drive.setDrivePowers(new PoseVelocity2d(
                             new Vector2d(Constants.AUTO_FORWARD_SPEED, 0), trackTurn
@@ -218,8 +238,9 @@ public class AutoZone1_AI extends LinearOpMode {
                     break;
 
                 case MOVE_TO_SHOOT:
-                    double shootTargetX = 0;
-                    double shootTargetY = 0;
+                    // 사격 위치를 시작 위치(0,0)에서 앞으로 조금(15인치) 전진한 곳으로 설정
+                    double shootTargetX = 15.0;
+                    double shootTargetY = 0.0;
                     
                     double moveErrorX = shootTargetX - currentX;
                     double moveErrorY = shootTargetY - currentY;
@@ -253,6 +274,12 @@ public class AutoZone1_AI extends LinearOpMode {
                             state = AutoState.SHOOTING;
                         } else {
                             double aimTurn = -txGoal * Constants.VISION_TURN_KP;
+                            
+                            // 화면 가장자리에서 발견했을 때 파워가 폭주하여 급가속하는 현상 방지 (최대 0.3으로 제한)
+                            if (aimTurn > 0.3) aimTurn = 0.3;
+                            if (aimTurn < -0.3) aimTurn = -0.3;
+
+                            // 마찰력을 이기고 움직이기 위한 최소 파워(Feedforward) 설정
                             if (Math.abs(aimTurn) < Constants.AUTO_SPIN_SPEED) {
                                 aimTurn = Math.signum(aimTurn) * Constants.AUTO_SPIN_SPEED;
                             }
